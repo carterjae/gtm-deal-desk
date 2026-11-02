@@ -1,0 +1,19 @@
+- **Current State (Before Scenario):** {{ company_name }}'s ~{{ ai_eng_count }} AI engineers test {{ ai_product }} updates using fragmented offline scripts and manual spot-checking, leaving production vulnerable to silent regressions.
+- **Negative Consequences (Cost of Inaction):** {{ annual_eval_tax }} in wasted senior engineering capacity. Prompt and model updates stall in staging for weeks due to lack of automated CI/CD regression gates.
+- **Desired State (After Scenario):** A unified evaluation and observability control plane on {{ hiring_company | default("Braintrust") }} featuring automated CI/CD regression suites, zero-latency production tracing, and 1-click trace-to-dataset promotion.
+- **Positive Business Outcomes (PBOs):** 10x faster prompt and model release velocity (weeks reduced to hours), {{ annual_eval_tax }} in reclaimed engineering capacity, and zero production hallucination regressions across 10,000+ automated assertions.
+- **Required Capabilities & Differentiators:** Sub-second offline and online LLM-as-a-judge evaluation engine, 1-click promotion of failed production traces into permanent CI/CD regression benchmarks, and enterprise governance ({{ security_trigger | default("SOC2 Type II, HIPAA & Hybrid VPC") }}).
+- **External Proof Points (Zero Customer Overlap):** Dropbox scaled from manual spreadsheet reviews to 10,000+ automated CI/CD regression tests on Braintrust; Notion enabled 70+ engineers to ship frontier model updates within hours without regressions.
+
+### Track A: Economic Buyer Cold Email — {{ economic_buyer }}
+```text
+Subject: {{ ai_product }} velocity / the 30% vibes-based eval tax
+
+{{ eb_first_name | default("Team") }} — Scaling {{ ai_product }} into autonomous execution is a massive revenue wedge for {{ company_name }}.
+
+However, across ~{{ ai_eng_count }} AI engineers, roughly {{ annual_eval_tax }} in senior engineering capacity typically gets swallowed firefighting prompt regressions, grading outputs in spreadsheets, and maintaining custom eval scripts.
+
+Notion and Dropbox standardized on {{ hiring_company | default("Braintrust") }} to run 10,000+ automated regression evals in CI/CD and deploy prompt updates 10x faster with zero vibes.
+
+Open to a 12-minute brief on how they automated their production eval gates?
+```

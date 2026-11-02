@@ -1,0 +1,21 @@
+{
+  "company_name": "Intercom",
+  "domain": "https://intercom.com",
+  "hiring_company": "Braintrust",
+  "ai_product": "Fin AI Agent",
+  "ai_eng_count": 20,
+  "wasted_ftes": 6.0,
+  "annual_eval_tax": "$1,440,000/yr (6.0 Senior AI FTEs)",
+  "estimated_arr": 85000,
+  "stage": "Prospecting",
+  "meddic_score": "Strong - Validated Pain",
+  "eb_first_name": "Darragh",
+  "economic_buyer": "Darragh (VP of Product Engineering)",
+  "champion": "Lead Conversational AI Architect",
+  "oss_hiring_signal": "Scaling Fin AI across 25K+ customers + Hiring Senior Conversational Eval Engineers",
+  "security_trigger": "SOC2 + Regulated",
+  "top_down_trigger": "Intercom is scaling Fin AI Agent across enterprise accounts where silent prompt regressions directly impact customer retention and SLA guarantees.",
+  "bottleneck_summary": "manual spreadsheet grading, bespoke Python evaluation scripts, and vibes-based regression firefighting",
+  "meddic_red_flags": "Status Quo DIY: Internal Python eval harnesses built for Fin v1 that struggle to scale to multi-step tool calling.",
+  "ingested_at": "2026-10-20T13:52:03.155628+00:00"
+}

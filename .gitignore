@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.pyc
+.DS_Store
+staging/*.json
+!staging/sample_target.json
+!staging/ramp.json
+!staging/ashby.json
+!staging/deel.json
+!staging/checkr.json

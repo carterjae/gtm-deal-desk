@@ -1,0 +1,21 @@
+{
+  "company_name": "Ramp",
+  "domain": "https://ramp.com",
+  "hiring_company": "Braintrust",
+  "ai_product": "Ramp Intelligence",
+  "ai_eng_count": 16,
+  "wasted_ftes": 4.8,
+  "annual_eval_tax": "$1,152,000/yr (4.8 Senior AI FTEs)",
+  "estimated_arr": 75000,
+  "stage": "Discovery",
+  "meddic_score": "Strong - Validated Pain",
+  "eb_first_name": "Karim",
+  "economic_buyer": "Karim (VP of Engineering & Platform)",
+  "champion": "Staff AI Systems Architect",
+  "oss_hiring_signal": "Autonomous expense policy & OCR agents + Zero tolerance for financial ledger hallucinations",
+  "security_trigger": "Enterprise VPC",
+  "top_down_trigger": "Ramp is scaling Ramp Intelligence across enterprise accounts where silent prompt regressions directly impact customer retention and SLA guarantees.",
+  "bottleneck_summary": "manual spreadsheet grading, bespoke Python evaluation scripts, and vibes-based regression firefighting",
+  "meddic_red_flags": "Strict VPC/PII security review required before financial receipt traces can be logged.",
+  "ingested_at": "2026-10-20T13:52:03.153661+00:00"
+}

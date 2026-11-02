@@ -1,0 +1,35 @@
+# config.yaml — Enterprise Deal Desk Pipeline Configuration (Native Gemini 3.8 Edition)
+hiring_company:
+  name: "Braintrust"
+  domain: "braintrust.dev"
+  product: "Braintrust Evals, Tracing, Datasets & AI Proxy"
+  pain_point_type: "eval_tax" # Options: eval_tax, plumbing_tax, compliance_tax
+  proof_points:
+    - "Dropbox (scaled to 10,000+ automated CI/CD regression tests for Dropbox Dash)"
+    - "Notion (70+ engineers shipping frontier model updates in hours without regressions)"
+  excluded_customers:
+    - "notion.so"
+    - "dropbox.com"
+    - "zapier.com"
+    - "airtable.com"
+    - "coda.io"
+    - "instacart.com"
+    - "stripe.com"
+
+notion:
+  version: "2022-06-28"
+  page_id: "3ff42e9ec1d080c598d8f783e74090b7"
+  database_id: "3ff42e9ec1d081ea953efdca74c264f0"
+  api_key: "${NOTION_API_KEY}"
+
+clay:
+  table_id: "t_0tn09854umvwUCdqJS4"
+  workflow_id: "wf_0tn0b1lj2vQT2EAYkDB"
+  webhook_secret: "${CLAY_WEBHOOK_SECRET}"
+  webhook_host: "127.0.0.1"
+  webhook_port: 8787
+
+llm:
+  provider: "gemini"
+  model: "gemini-3.8-flash"
+  api_key: "${GEMINI_API_KEY}"

@@ -1,0 +1,21 @@
+{
+  "company_name": "Deel",
+  "domain": "https://deel.com",
+  "hiring_company": "Braintrust",
+  "ai_product": "Deel AI Global Compliance Agent",
+  "ai_eng_count": 22,
+  "wasted_ftes": 6.6,
+  "annual_eval_tax": "$1,584,000/yr (6.6 Senior AI FTEs)",
+  "estimated_arr": 95000,
+  "stage": "Prospecting",
+  "meddic_score": "Moderate Risk",
+  "eb_first_name": "Courtney",
+  "economic_buyer": "Courtney (VP of Product Engineering)",
+  "champion": "Staff AI Platform Architect",
+  "oss_hiring_signal": "150+ country labor law reasoning where a single hallucinated contract clause creates legal liability",
+  "security_trigger": "HIPAA / Zero Egress",
+  "top_down_trigger": "Deel is scaling Deel AI Global Compliance Agent across enterprise accounts where silent prompt regressions directly impact customer retention and SLA guarantees.",
+  "bottleneck_summary": "manual spreadsheet grading, bespoke Python evaluation scripts, and vibes-based regression firefighting",
+  "meddic_red_flags": "Multi-region GDPR data residency requirements across EU and US clusters.",
+  "ingested_at": "2026-10-20T13:52:03.154019+00:00"
+}

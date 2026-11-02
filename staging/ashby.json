@@ -1,0 +1,21 @@
+{
+  "company_name": "Ashby",
+  "domain": "https://ashbyhq.com",
+  "hiring_company": "Braintrust",
+  "ai_product": "Ashby AI Recruiting Copilot",
+  "ai_eng_count": 8,
+  "wasted_ftes": 2.4,
+  "annual_eval_tax": "$576,000/yr (2.4 Senior AI FTEs)",
+  "estimated_arr": 45000,
+  "stage": "Prospecting",
+  "meddic_score": "Strong - Validated Pain",
+  "eb_first_name": "Abhik",
+  "economic_buyer": "Abhik Pramanik (Co-Founder & VP of Engineering)",
+  "champion": "Lead AI Platform Engineer",
+  "oss_hiring_signal": "Scaling interview debrief summarization & candidate scoring where EEOC compliance is mandatory",
+  "security_trigger": "SOC2 + Regulated",
+  "top_down_trigger": "Ashby is scaling Ashby AI Recruiting Copilot across enterprise accounts where silent prompt regressions directly impact customer retention and SLA guarantees.",
+  "bottleneck_summary": "manual spreadsheet grading, bespoke Python evaluation scripts, and vibes-based regression firefighting",
+  "meddic_red_flags": "Lean 8-engineer AI squad currently grading prompt outputs manually in spreadsheets.",
+  "ingested_at": "2026-10-20T13:52:03.153836+00:00"
+}
