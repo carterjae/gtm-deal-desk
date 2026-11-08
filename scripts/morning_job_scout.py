@@ -1407,6 +1407,12 @@ def resolve_company_domain(company_name: str, company_url: Optional[str] = None)
         "omnissa": "omnissa.com",
         "samsara": "samsara.com",
         "gitlab": "gitlab.com",
+        "kernel": "onkernel.com",
+        "protege": "withprotege.ai",
+        "pylon": "usepylon.com",
+        "unify": "unifygtm.com",
+        "dust": "dust.tt",
+        "lovable": "lovable.dev",
     }
     return special.get(clean, f"{clean}.com" if clean else "notion.so")
 
