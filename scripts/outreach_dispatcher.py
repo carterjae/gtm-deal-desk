@@ -32,6 +32,8 @@ if str(PROJECT_ROOT) not in sys.path:
 
 load_dotenv(PROJECT_ROOT / ".env")
 
+from scripts.contact_verifier import clean_domain
+
 try:
     import importlib
     _old_path = list(sys.path)
@@ -57,11 +59,11 @@ except ImportError:
         }
 
 NOTION_TOKEN = os.getenv("NOTION_TOKEN")
-NOTION_JOB_DB_ID = os.getenv("NOTION_JOB_DB_ID")
+NOTION_DEAL_DESK_DB_ID = os.getenv("NOTION_DEAL_DESK_DB_ID") or os.getenv("NOTION_DATABASE_ID") or os.getenv("NOTION_JOB_DB_ID")
 IMAP_HOST = os.getenv("IMAP_HOST") or os.getenv("IMAP_SERVER", "imap.gmail.com")
 IMAP_USER = os.getenv("IMAP_USER")
 IMAP_PASSWORD = os.getenv("IMAP_PASSWORD")
-SENDER_NAME = os.getenv("SENDER_NAME", "Jae Carter")
+SENDER_NAME = os.getenv("SENDER_NAME", "Enterprise Deal Desk")
 
 STAGED_OUTREACH_FILE = PROJECT_ROOT / "output" / "staged_outreach.json"
 
@@ -121,114 +123,216 @@ def resolve_poc_email_and_name(poc: dict, domain: str, default_prefix: str = "")
     return "", "there"
 
 
-def build_committee_outreach_tracks(company_name: str, dossier: dict, coi_usd: int) -> list[dict]:
-    """
-    Builds 3 multi-threaded Challenger + CoM outbound tracks (100% linkless for Touch 1)
-    mapped to the department-verified Buying Committee in the dossier.
-    """
-    domain = dossier.get("domain", f"{re.sub(r'[^a-zA-Z0-9]', '', company_name.lower())}.com")
-    dept = dossier.get("owning_department", "GTM & Revenue Operations")
-    pocs = dossier.get("buying_committee_pocs", [])
+def resolve_seller_config() -> dict:
+    """Loads active seller configuration from target_company.yml, seller_profile.yaml, or config.yaml."""
+    for conf_name in ("target_company.yml", "seller_profile.yaml", "config.yaml"):
+        p = PROJECT_ROOT / conf_name
+        if p.exists():
+            try:
+                import yaml
+                data = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+                if "hiring_company" in data:
+                    hc = data["hiring_company"]
+                    if isinstance(hc, dict):
+                        return {
+                            "name": hc.get("name", "Braintrust"),
+                            "domain": hc.get("domain", "braintrust.dev"),
+                            "category": hc.get("product", "Enterprise AI Evaluation & Observability"),
+                            "pain_point_type": hc.get("pain_point_type", "eval_tax"),
+                        }
+                    return {
+                        "name": str(hc),
+                        "domain": f"{str(hc).lower().replace(' ', '')}.com",
+                        "category": data.get("product_summary", "Enterprise AI Platform"),
+                        "pain_point_type": data.get("pain_point_type", "eval_tax"),
+                    }
+                if "seller" in data or "company_name" in data:
+                    s_name = data.get("seller") or data.get("company_name", "Braintrust")
+                    return {
+                        "name": s_name,
+                        "domain": data.get("domain", f"{s_name.lower().replace(' ', '')}.com"),
+                        "category": data.get("category", "Enterprise Software Platform"),
+                        "pain_point_type": data.get("pain_point_type", "eval_tax"),
+                    }
+            except Exception:
+                pass
+    return {
+        "name": "Braintrust",
+        "domain": "braintrust.dev",
+        "category": "Enterprise AI Evaluation, Observability & Proxy Infrastructure",
+        "pain_point_type": "eval_tax",
+    }
 
-    # Default 3-tier committee fallback if dossier was created prior to jd_resolver
+
+def build_committee_outreach_tracks(
+    company_name: str,
+    dossier: Optional[dict] = None,
+    coi_usd: Optional[int] = None,
+) -> list[dict]:
+    """
+    Builds 3 multi-threaded Challenger + Command of the Message (CoM) enterprise outbound tracks
+    dynamically mapped to the target account's verified Buying Committee:
+      - Track 1: Operational Champion (Problem Owner / Workflow Friction)
+      - Track 2: Executive Sponsor (Economic Buyer / Financial ROI & PBOs)
+      - Track 3: Technical Peer (Evaluator / Architecture & Security Invariants)
+    Dynamically adapts to ANY enterprise software category (AI Infrastructure, Security/Compliance,
+    RevOps, Developer Tools, or Finance) based on the active seller and target account dossier.
+    """
+    dossier = dossier or {}
+    domain = clean_domain(dossier.get("domain") or f"{re.sub(r'[^a-zA-Z0-9]', '', company_name.lower())}.com")
+    seller = resolve_seller_config()
+    seller_name = dossier.get("hiring_company") or dossier.get("seller_name") or seller.get("name", "Braintrust")
+
+    pain_type = str(dossier.get("pain_point_type") or seller.get("pain_point_type", "eval_tax")).lower()
+    product_wedge = dossier.get("ai_product") or dossier.get("product_summary") or f"{company_name}'s production platform"
+    top_down_trigger = dossier.get("top_down_trigger") or f"{company_name}'s expansion across high-volume enterprise workflows"
+    bottleneck = dossier.get("bottleneck_summary") or dossier.get("identified_pain")
+    security_trigger = dossier.get("security_trigger") or "SOC2 Type II & Enterprise VPC"
+    financial_tax = dossier.get("annual_eval_tax") or (f"${coi_usd:,}/yr in capacity drag" if coi_usd else "$240,000+/yr in senior builder capacity")
+
+    # Dynamic ICP persona mapping based on pain point category
+    if "eval" in pain_type or "ai" in pain_type or "prompt" in pain_type:
+        default_dept = "AI Engineering & Platform"
+        default_champ_title = dossier.get("champion") or "Lead Conversational AI Architect"
+        default_eb_title = dossier.get("economic_buyer") or "VP of Product Engineering"
+        default_eval_title = "Staff AI Platform Engineer"
+        status_quo_pain = bottleneck or "bespoke Python evaluation scripts, manual spreadsheet grading, and prompt regression firefighting"
+        solution_angle = f"automated CI/CD regression gates, LLM-as-a-judge scoring, and zero-data retention proxy caching"
+    elif "compliance" in pain_type or "security" in pain_type or "soc2" in pain_type:
+        default_dept = "Security & Compliance"
+        default_champ_title = dossier.get("champion") or "Head of Information Security / CISO"
+        default_eb_title = dossier.get("economic_buyer") or "Chief Financial Officer / VP Operations"
+        default_eval_title = "Staff DevOps & Security Architect"
+        status_quo_pain = bottleneck or "manual evidence screenshots, audit prep scrambles, and vendor security review friction"
+        solution_angle = "continuous automated compliance, real-time trust center, and instant audit reporting"
+    elif "revops" in pain_type or "data_hygiene" in pain_type or "gtm" in pain_type:
+        default_dept = "Revenue Operations & GTM Systems"
+        default_champ_title = dossier.get("champion") or "Head of GTM Engineering / Director of RevOps"
+        default_eb_title = dossier.get("economic_buyer") or "Chief Revenue Officer / VP of Sales"
+        default_eval_title = "CRM & Data Systems Architect"
+        status_quo_pain = bottleneck or "manual enrichment waterfall debugging, unverified lead credit burn, and CRM drift"
+        solution_angle = "zero-cost Tier-0 DNS/MX pre-filtering, automated waterfall routing, and idempotent CRM synchronization"
+    else:
+        default_dept = dossier.get("owning_department") or "Engineering & Platform"
+        default_champ_title = dossier.get("champion") or f"Director of {default_dept}"
+        default_eb_title = dossier.get("economic_buyer") or f"VP of {default_dept}"
+        default_eval_title = "Principal Systems Architect"
+        status_quo_pain = bottleneck or "manual operational friction and fragmented point-tool maintenance"
+        solution_angle = "unified architecture automation, real-time telemetry, and enterprise governance"
+
+    # Resolve POCs
+    pocs = dossier.get("buying_committee_pocs", [])
     if len(pocs) < 3:
         pocs = [
             {
-                "tier_label": "Tier 1: Operational Hiring Manager (Primary Champion)",
-                "exact_title": f"VP / Director of {dept}",
-                "full_name_or_search_query": f"Hiring Manager ({dept})",
-                "tailored_hook": f"eliminating manual data hygiene and enrichment bottlenecks across {company_name}'s {dept} stack"
+                "tier_label": "Tier 1: Operational Champion (Problem Owner)",
+                "exact_title": default_champ_title,
+                "full_name_or_search_query": dossier.get("champion_name") or default_champ_title,
             },
             {
                 "tier_label": "Tier 2: Executive Sponsor (Economic Buyer)",
-                "exact_title": "CMO / CRO / VP of Growth",
-                "full_name_or_search_query": "Executive Sponsor",
-                "tailored_hook": f"reclaiming ${coi_usd:,}/yr in operator capacity and accelerating pipeline velocity"
+                "exact_title": default_eb_title,
+                "full_name_or_search_query": dossier.get("eb_first_name") or dossier.get("economic_buyer") or default_eb_title,
             },
             {
-                "tier_label": "Tier 3: Technical Peer / Evaluator",
-                "exact_title": "Sr. GTM Systems Engineer / Lead Operations Architect",
-                "full_name_or_search_query": "Technical Peer",
-                "tailored_hook": "enforcing Tier-0 DNS/LLM pre-filtering and idempotent CRM upserts (enrich_null_fields_only)"
+                "tier_label": "Tier 3: Technical Peer (Architecture Evaluator)",
+                "exact_title": default_eval_title,
+                "full_name_or_search_query": default_eval_title,
             }
         ]
 
     tracks = []
     portfolio_url = f"https://jae-carter.vercel.app/?company={urllib.parse.quote(company_name)}"
 
-    # Track 1: Operational Hiring Manager (Champion Track — Workflow Friction + Required Capabilities)
-    hm = pocs[0]
-    hm_email, hm_first = resolve_poc_email_and_name(hm, domain, "hiring.manager")
-    if not hm_email:
+    # Track 1: Operational Champion (Problem Owner — Workflow Friction & Tooling Breakdown)
+    champ = pocs[0]
+    champ_email, champ_first = resolve_poc_email_and_name(champ, domain, "champion")
+    if not champ_email:
         try:
             from scripts.contact_verifier import resolve_hiring_committee_contact
-            resolved = resolve_hiring_committee_contact(company_name, dept, domain=domain)
+            resolved = resolve_hiring_committee_contact(company_name, champ.get("exact_title", default_champ_title), domain=domain)
             if resolved.get("buyer_email"):
-                hm_email = resolved["buyer_email"]
-                hm_first = resolved["buyer_name"].split()[0]
+                champ_email = resolved["buyer_email"]
+                champ_first = resolved["buyer_name"].split()[0]
         except Exception:
             pass
-    hm_subject = f"{company_name} {dept} / eliminating the manual research tax"
-    hm_body = (
-        f"Hi {hm_first} —\n\n"
-        f"Noticed {company_name} is scaling your {dept} architecture.\n\n"
-        f"Usually at this stage, the hidden bottleneck isn't tooling—it's the 15–18 hours/week operators spend manually verifying account signals, troubleshooting enrichment waterfalls, and cleaning CRM sync errors.\n\n"
-        f"I architected a live Deal Desk & territory enrichment spec specifically for {company_name}'s ICP (using a $0.00 Tier-0 DNS/MX + LLM pre-filter before touching paid Clay/Apollo credits):\n"
+
+    champ_subject = f"{company_name}'s {product_wedge} / eliminating {status_quo_pain.split(',')[0].strip()}"
+    champ_body = (
+        f"Hi {champ_first} —\n\n"
+        f"Noticed {company_name} is actively scaling {product_wedge}.\n\n"
+        f"Usually when teams hit this velocity, the hidden drag isn't model or platform choice—it's {status_quo_pain}. Across peer engineering teams, senior builders lose 15–20 hours per sprint maintaining custom scripts and firefighting edge cases.\n\n"
+        f"{seller_name} drops directly into your CI/CD and deployment pipeline to provide {solution_angle}—freeing your builders to focus on core product features.\n\n"
+        f"We put together an architectural teardown tailored to {company_name}'s stack:\n"
         f"{portfolio_url}\n\n"
-        f"Worth a quick look to see how I build?"
+        f"Open to a 10-minute peer walkthrough on Thursday to see how peer teams handle this?"
     )
     tracks.append({
-        "track_id": "tier1_hiring_manager",
-        "label": f"Track 1: {hm.get('tier_label', 'Operational Hiring Manager')} — {hm.get('exact_title', '')}",
-        "search_hint": hm.get("full_name_or_search_query", ""),
-        "to_placeholder": hm_email,
-        "subject": hm_subject,
-        "body": hm_body
+        "track_id": "tier1_operational_champion",
+        "label": f"Track 1: {champ.get('tier_label', 'Operational Champion')} — {champ.get('exact_title', default_champ_title)}",
+        "search_hint": champ.get("full_name_or_search_query", default_champ_title),
+        "to_placeholder": champ_email,
+        "subject": champ_subject,
+        "body": champ_body
     })
 
-    # Track 2: Executive Sponsor (Economic Buyer Track — Strategic Velocity + PBOs)
+    # Track 2: Executive Sponsor (Economic Buyer — Financial ROI & Business Velocity)
     eb = pocs[1]
-    eb_email, eb_first = resolve_poc_email_and_name(eb, domain, "exec.sponsor")
-    if not eb_email and hm_email:
-        eb_email, eb_first = hm_email, hm_first
-    eb_subject = f"{company_name} pipeline velocity / autonomous GTM systems blueprint"
+    eb_email, eb_first = resolve_poc_email_and_name(eb, domain, "economic.buyer")
+    if not eb_email and dossier.get("eb_first_name"):
+        eb_first = dossier.get("eb_first_name")
+    if not eb_email:
+        try:
+            from scripts.contact_verifier import resolve_hiring_committee_contact
+            resolved = resolve_hiring_committee_contact(company_name, eb.get("exact_title", default_eb_title), domain=domain)
+            if resolved.get("buyer_email"):
+                eb_email = resolved["buyer_email"]
+                eb_first = resolved["buyer_name"].split()[0]
+        except Exception:
+            pass
+
+    eb_subject = f"{company_name} engineering velocity / reclaiming {financial_tax}"
     eb_body = (
         f"Hi {eb_first} —\n\n"
-        f"Saw {company_name}'s recent push scaling {dept}.\n\n"
-        f"When high-growth teams scale GTM systems, 35–40% of operator capacity often gets swallowed by manual list hygiene, unverified domain credit burn, and brittle CRM routing.\n\n"
-        f"Rather than send a standard application, I built a live interactive Deal Desk and zero-trust CRM webhook blueprint tailored to {company_name}'s exact ICP (14.2s median synthesis latency):\n"
+        f"Saw {company_name}'s strategic push around {top_down_trigger.split('.')[0].strip()}.\n\n"
+        f"At {company_name}'s scale, maintaining unmonitored status-quo processes quietly drains an estimated {financial_tax} in senior capacity while introducing enterprise SLA risk.\n\n"
+        f"{seller_name} gives {company_name}'s leadership board-level reliability, automated regression protection, and unified governance ({security_trigger}) out of the box.\n\n"
+        f"I prepared an executive Deal Desk blueprint mapped to {company_name}'s motion:\n"
         f"{portfolio_url}\n\n"
-        f"Open to a 15-minute intro if this aligns with your roadmap?"
+        f"Worth a 12-minute executive briefing next week to review how peer leaders are unlocking this capacity?"
     )
     tracks.append({
-        "track_id": "tier2_exec_sponsor",
-        "label": f"Track 2: {eb.get('tier_label', 'Executive Sponsor')} — {eb.get('exact_title', '')}",
-        "search_hint": eb.get("full_name_or_search_query", ""),
+        "track_id": "tier2_executive_sponsor",
+        "label": f"Track 2: {eb.get('tier_label', 'Executive Sponsor')} — {eb.get('exact_title', default_eb_title)}",
+        "search_hint": eb.get("full_name_or_search_query", default_eb_title),
         "to_placeholder": eb_email,
         "subject": eb_subject,
         "body": eb_body
     })
 
-    # Track 3: Technical Peer (Architect Track — FinOps + Idempotency Governance)
+    # Track 3: Technical Peer (Architecture & Security Evaluator)
     peer = pocs[2]
-    peer_email, peer_first = resolve_poc_email_and_name(peer, domain, "gtm.systems")
-    peer_subject = f"Tier-0 Clay FinOps + idempotent CRM webhooks at {company_name}"
+    peer_email, peer_first = resolve_poc_email_and_name(peer, domain, "platform.architect")
+    peer_subject = f"{security_trigger} architecture + zero-friction deployment for {company_name}"
     peer_body = (
         f"Hi {peer_first} —\n\n"
-        f"Saw your team is expanding the {dept} engineering pod at {company_name}.\n\n"
-        f"Quick architecture question: when your workflows enrich inbound/outbound domains today, are you running a Tier-0 DNS/MX + local LLM gate first, or firing paid Clay/Apollo waterfalls directly on raw inputs?\n\n"
-        f"I put together a working workbench for {company_name} showing a $0.00 Tier-0 pre-filter paired with an idempotent SQLite WAL queue and CRM webhook ('enrich_null_fields_only' so automation never overwrites rep notes):\n"
+        f"Saw your team is overseeing core infrastructure and integration standards at {company_name}.\n\n"
+        f"Quick architecture question: when evaluating tooling across {default_dept}, what is your team's stance on zero-data retention, hybrid VPC deployment, and sub-50ms latency SLAs?\n\n"
+        f"We architected {seller_name} to deploy into enterprise environments in minutes with strict Pydantic/OpenAPI contracts and full {security_trigger} compliance.\n\n"
+        f"I put together a live architecture workbench for {company_name} showing the exact pipeline topology and data plane:\n"
         f"{portfolio_url}\n\n"
         f"Mind if I get a quick peer sanity check on the architecture?"
     )
     tracks.append({
-        "track_id": "tier3_technical_peer",
-        "label": f"Track 3: {peer.get('tier_label', 'Technical Peer')} — {peer.get('exact_title', '')}",
-        "search_hint": peer.get("full_name_or_search_query", ""),
+        "track_id": "tier3_technical_evaluator",
+        "label": f"Track 3: {peer.get('tier_label', 'Technical Evaluator')} — {peer.get('exact_title', default_eval_title)}",
+        "search_hint": peer.get("full_name_or_search_query", default_eval_title),
         "to_placeholder": peer_email,
         "subject": peer_subject,
         "body": peer_body
     })
+
+    return tracks
 
     return tracks
 
@@ -613,62 +717,90 @@ def dispatch_deal_room(
     return True
 
 
-def stage_committee_outreach(company_name: str, page_id: Optional[str] = None) -> dict:
+def stage_committee_outreach(company_or_file: str, page_id: Optional[str] = None) -> dict:
     """Main entry point to stage 1-click Notion mailto buttons and push drafts to IMAP."""
-    if not NOTION_TOKEN or not NOTION_JOB_DB_ID:
-        print("[-] NOTION_TOKEN or NOTION_JOB_DB_ID missing in .env.")
-        sys.exit(1)
+    target_path = Path(company_or_file)
+    if target_path.exists() and target_path.is_file():
+        dossier = json.loads(target_path.read_text(encoding="utf-8"))
+        company_name = dossier.get("company_name") or target_path.stem
+    else:
+        company_name = company_or_file
+        clean_co = re.sub(r"[^\w\-]", "_", company_name)
+        dossier_path = PROJECT_ROOT / f"output/dossiers/{clean_co}_dossier.json"
+        dossier = json.loads(dossier_path.read_text(encoding="utf-8")) if dossier_path.exists() else {}
 
     clean_co = re.sub(r"[^\w\-]", "_", company_name)
-    dossier_path = PROJECT_ROOT / f"output/dossiers/{clean_co}_dossier.json"
-    dossier = json.loads(dossier_path.read_text(encoding="utf-8")) if dossier_path.exists() else {}
-
     coi_metrics = calculate_deterministic_coi(dossier)
-    tracks = build_committee_outreach_tracks(company_name, dossier, coi_metrics["annual_coi_usd"])
+    tracks = build_committee_outreach_tracks(company_name, dossier, coi_metrics.get("annual_coi_usd"))
 
     staged_data = {
         "company_name": company_name,
         "clean_co": clean_co,
-        "coi_usd": coi_metrics["annual_coi_usd"],
+        "coi_usd": coi_metrics.get("annual_coi_usd"),
         "tracks": {}
     }
 
+    print(f"\n=======================================================")
+    print(f" 🎯 3-PERSONA BUYING COMMITTEE OUTREACH: {company_name.upper()}")
+    print(f"=======================================================")
+    for t in tracks:
+        print(f"\n[{t['label']}]")
+        print(f"Recipient Lookup: {t['search_hint']} <{t['to_placeholder'] or 'UNRESOLVED'}>")
+        print(f"Subject         : {t['subject']}")
+        print(f"Body Preview    :\n{t['body'][:220]}...")
+        print(f"-------------------------------------------------------")
+
     imap_synced = False
     for t in tracks:
-        msg_id = push_draft_to_imap(t["to_placeholder"], t["subject"], t["body"])
-        t["message_id"] = msg_id
-        staged_data["tracks"][t["track_id"]] = {
-            "to": t["to_placeholder"],
-            "subject": t["subject"],
-            "message_id": msg_id
-        }
-        if msg_id:
-            imap_synced = True
-            print(f"[+] Synced {t['track_id']} directly to IMAP Drafts folder ({msg_id})")
+        if t["to_placeholder"]:
+            msg_id = push_draft_to_imap(t["to_placeholder"], t["subject"], t["body"])
+            t["message_id"] = msg_id
+            staged_data["tracks"][t["track_id"]] = {
+                "to": t["to_placeholder"],
+                "subject": t["subject"],
+                "message_id": msg_id
+            }
+            if msg_id:
+                imap_synced = True
+                print(f"[+] Synced {t['track_id']} directly to IMAP Drafts folder ({msg_id})")
 
     # Persist staged outreach metadata locally
     save_staged_outreach(clean_co.lower(), staged_data)
 
-    notion = Client(auth=NOTION_TOKEN)
-    target_page_id = page_id
-    if not target_page_id:
-        res = notion.databases.query(
-            database_id=NOTION_JOB_DB_ID,
-            filter={"property": "Company & Role", "title": {"contains": company_name}}
-        )
-        pages = res.get("results", [])
-        if not pages:
-            print(f"[-] No Notion card found for {company_name}.")
-            return staged_data
-        target_page_id = pages[0]["id"]
+    if not NOTION_TOKEN or not NOTION_DEAL_DESK_DB_ID:
+        print("\n[i] Note: NOTION_TOKEN or NOTION_DEAL_DESK_DB_ID omitted. Skipped Notion block append.")
+        return staged_data
 
-    append_one_click_committee_outreach_to_notion(
-        notion=notion,
-        page_id=target_page_id,
-        company_name=company_name,
-        tracks=tracks,
-        imap_synced=imap_synced
-    )
+    try:
+        notion = Client(auth=NOTION_TOKEN)
+        target_page_id = page_id
+        if not target_page_id:
+            res = notion.databases.query(
+                database_id=NOTION_DEAL_DESK_DB_ID,
+                filter={"property": "Company Name", "title": {"contains": company_name}}
+            )
+            pages = res.get("results", [])
+            if not pages:
+                # Try fallback filter on 'Company & Role' if database uses older schema
+                res = notion.databases.query(
+                    database_id=NOTION_DEAL_DESK_DB_ID,
+                    filter={"property": "Company & Role", "title": {"contains": company_name}}
+                )
+                pages = res.get("results", [])
+            if not pages:
+                print(f"[-] No Notion Deal Desk page found for {company_name}.")
+                return staged_data
+            target_page_id = pages[0]["id"]
+
+        append_one_click_committee_outreach_to_notion(
+            notion=notion,
+            page_id=target_page_id,
+            company_name=company_name,
+            tracks=tracks,
+            imap_synced=imap_synced
+        )
+    except Exception as exc:
+        print(f"[!] Notion append note: {exc}")
     return staged_data
 
 

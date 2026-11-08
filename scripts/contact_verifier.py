@@ -368,24 +368,26 @@ def verify_email_address(email_addr: str, probe_smtp: bool = True) -> ContactVer
 def generate_hiring_committee_search_url(company_name: str, role_archetype: str) -> str:
     """
     Generates a deterministic 1-click LinkedIn Search deep-link targeting the
-    economic buyers and hiring managers for a specific company and role archetype.
+    economic buyers and champions for a specific company and persona department.
     """
     import urllib.parse
     clean_co = re.sub(r"[,\.]", "", company_name).strip()
     # Strip any trailing company qualifiers like Inc, LLC, etc.
     clean_co = re.sub(r"\b(Inc|LLC|Corp|Corporation|Ltd)\b", "", clean_co, flags=re.I).strip()
 
-    arch_lower = role_archetype.lower()
-    if "gtm engineer" in arch_lower or "growth engineer" in arch_lower:
-        keywords = f'"{clean_co}" AND ("Head of GTM" OR "VP Revenue Operations" OR "Head of GTM Engineering" OR "Head of Growth" OR "VP Sales" OR "CRO")'
-    elif "ai operations" in arch_lower or "technical revops" in arch_lower or "revenue architect" in arch_lower or "revops" in arch_lower:
-        keywords = f'"{clean_co}" AND ("VP Revenue Operations" OR "Head of RevOps" OR "Director of GTM Systems" OR "Head of AI Operations" OR "VP Business Operations")'
-    elif "founding" in arch_lower or "outbound ae" in arch_lower or "ae" in arch_lower or "account executive" in arch_lower:
-        keywords = f'"{clean_co}" AND ("VP of Sales" OR "Head of Sales" OR "CRO" OR "Chief Revenue Officer" OR "Founding AE")'
-    elif "growth" in arch_lower:
-        keywords = f'"{clean_co}" AND ("Head of Growth" OR "VP Growth" OR "VP Marketing" OR "CRO")'
+    p_lower = role_archetype.lower()
+    if any(k in p_lower for k in ("ai", "ml", "engineering", "platform", "eval", "product engineering")):
+        keywords = f'"{clean_co}" AND ("VP of Product Engineering" OR "VP Engineering" OR "Head of AI" OR "CTO" OR "Principal AI Architect" OR "Staff Platform Engineer")'
+    elif any(k in p_lower for k in ("security", "compliance", "ciso", "infosec", "soc2", "trust")):
+        keywords = f'"{clean_co}" AND ("CISO" OR "Head of Information Security" OR "VP Security" OR "Director of Compliance" OR "VP of IT")'
+    elif any(k in p_lower for k in ("finance", "cfo", "controller", "fp&a", "procurement")):
+        keywords = f'"{clean_co}" AND ("CFO" OR "VP Finance" OR "Head of FP&A" OR "VP Operations" OR "Controller")'
+    elif any(k in p_lower for k in ("product", "cpo", "product manager")):
+        keywords = f'"{clean_co}" AND ("Chief Product Officer" OR "VP of Product" OR "Head of Product")'
+    elif any(k in p_lower for k in ("revops", "gtm", "sales", "revenue", "growth")):
+        keywords = f'"{clean_co}" AND ("VP Revenue Operations" OR "CRO" OR "Head of GTM" OR "Head of RevOps" OR "VP Sales")'
     else:
-        keywords = f'"{clean_co}" AND ("VP Revenue Operations" OR "Head of GTM" OR "Director of GTM Systems" OR "VP Sales")'
+        keywords = f'"{clean_co}" AND ("{role_archetype}" OR "VP of Engineering" OR "VP Revenue Operations" OR "CRO")'
 
     encoded = urllib.parse.quote_plus(keywords)
     return f"https://www.linkedin.com/search/results/people/?keywords={encoded}"
@@ -487,13 +489,13 @@ def resolve_named_decision_maker_via_gemini(
 
         client = genai.Client(api_key=api_key)
         prompt = (
-            f"Search Google and LinkedIn (site:linkedin.com/in) to identify 1 current, real human leader at '{company_name}' "
-            f"who oversees or hires for '{role_archetype}'.\n"
+            f"Search Google and LinkedIn (site:linkedin.com/in) to identify 1 current, real human executive or department leader at '{company_name}' "
+            f"who matches or oversees the '{role_archetype}' function.\n"
             "Target titles in priority order:\n"
-            "1. VP / Head / Director of Revenue Operations (RevOps), GTM Systems, or Business Operations\n"
-            "2. Head of GTM Engineering, VP of Growth, or Chief Revenue Officer (CRO)\n"
+            f"1. Executive Sponsor / VP / Head / Director of {role_archetype}\n"
+            "2. Chief Decision Maker (e.g. CTO / CISO / CRO / CFO / VP of Engineering) depending on the functional department\n"
             "3. Only for startups under 250 employees: Co-Founder / President / COO\n"
-            "Do NOT return the CEO of a large public company (>1,000 employees); find their VP/Director of RevOps, GTM Systems, or Sales Operations instead.\n\n"
+            "Do NOT return the CEO of a large public enterprise (>1,000 employees); find their functional VP or Director instead.\n\n"
             "Return ONLY a JSON object with keys:\n"
             '{"full_name": "First Last", "title": "Exact Title at Company"}\n'
             "If you cannot verify a real human's first and last name, return {\"full_name\": \"\", \"title\": \"\"}."
@@ -599,18 +601,21 @@ def resolve_hiring_committee_contact(
     is_human = is_verified_human_name(resolved_name)
     if not is_human:
         arch_lower = role_archetype.lower()
-        if "ai operations" in arch_lower or "technical revops" in arch_lower:
-            resolved_name = "Head of AI Operations / Technical RevOps"
-            resolved_title = f"VP Revenue Operations & GTM Systems ({company_name})"
-        elif "revops" in arch_lower or "revenue architect" in arch_lower:
-            resolved_name = "VP / Director of Revenue Operations"
-            resolved_title = f"Head of RevOps & GTM Systems ({company_name})"
-        elif "gtm engineer" in arch_lower or "growth" in arch_lower:
-            resolved_name = "Head of GTM Engineering"
-            resolved_title = f"VP of GTM Systems & Revenue Operations ({company_name})"
-        else:
-            resolved_name = "VP of Enterprise Sales"
+        if any(k in arch_lower for k in ("ai", "engineering", "platform", "eval", "product engineering")):
+            resolved_name = "VP of Product Engineering / Head of AI"
+            resolved_title = f"Engineering & AI Leadership ({company_name})"
+        elif any(k in arch_lower for k in ("security", "compliance", "ciso", "infosec")):
+            resolved_name = "Chief Information Security Officer (CISO)"
+            resolved_title = f"Information Security & Trust ({company_name})"
+        elif any(k in arch_lower for k in ("finance", "cfo", "ops", "operations")):
+            resolved_name = "Chief Financial Officer (CFO)"
+            resolved_title = f"Finance & Operations ({company_name})"
+        elif any(k in arch_lower for k in ("revops", "gtm", "sales", "revenue")):
+            resolved_name = "VP of Revenue Operations & GTM Systems"
             resolved_title = f"Revenue Leadership ({company_name})"
+        else:
+            resolved_name = f"Head of {role_archetype}"
+            resolved_title = f"Executive Leadership ({company_name})"
 
     # 4. Resolve email address ONLY if we have a verified human name
     if is_human:
