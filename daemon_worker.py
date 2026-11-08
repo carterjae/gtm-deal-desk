@@ -30,13 +30,26 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 ENV_PATH = PROJECT_ROOT / ".env"
 load_dotenv(ENV_PATH)
 
-from job_engine import process_job_ingest
-from scripts.notifications import send_clean_mac_notification
-from scripts.followup_engine import (
-    generate_followup_bump,
-    stage_followup_eml,
-    format_followup_notion_blocks,
-)
+try:
+    from job_engine import process_job_ingest
+except ImportError:
+    process_job_ingest = None
+
+try:
+    from scripts.notifications import send_clean_mac_notification
+except ImportError:
+    send_clean_mac_notification = None
+
+try:
+    from scripts.followup_engine import (
+        generate_followup_bump,
+        stage_followup_eml,
+        format_followup_notion_blocks,
+    )
+except ImportError:
+    generate_followup_bump = None
+    stage_followup_eml = None
+    format_followup_notion_blocks = None
 
 FOLLOWUP_THRESHOLD_DAYS = 4
 FOLLOWUP_MARKER = "Touch 2:"

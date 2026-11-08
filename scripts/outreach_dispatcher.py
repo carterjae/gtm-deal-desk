@@ -33,16 +33,28 @@ if str(PROJECT_ROOT) not in sys.path:
 load_dotenv(PROJECT_ROOT / ".env")
 
 try:
-    from notion_client import Client
-except (ImportError, AttributeError):
     import importlib
     _old_path = list(sys.path)
-    sys.path = [p for p in sys.path if not p.endswith("hopeful-heisenberg") and p != ""]
+    sys.path = [p for p in sys.path if not p.endswith("hopeful-heisenberg") and not p.endswith("gtm-deal-desk") and p != "" and p != str(PROJECT_ROOT)]
     _pkg = importlib.import_module("notion_client")
-    Client = _pkg.Client
+    Client = getattr(_pkg, "Client", None)
     sys.path = _old_path
+except Exception:
+    Client = None
 
-from scripts.generate_blitz import calculate_deterministic_coi
+try:
+    from scripts.generate_blitz import calculate_deterministic_coi
+except ImportError:
+    def calculate_deterministic_coi(dossier: dict) -> dict:
+        headcount = dossier.get("headcount_bracket", "51-200")
+        reps_map = {"1-10": 2, "11-50": 5, "51-200": 12, "201-500": 25, "501-1000": 50, "1000+": 95}
+        reps = reps_map.get(headcount, 10)
+        return {
+            "headcount_bracket": headcount,
+            "estimated_reps": reps,
+            "weekly_hours_drag": reps * 10,
+            "annual_coi_usd": reps * 10 * 55 * 52,
+        }
 
 NOTION_TOKEN = os.getenv("NOTION_TOKEN")
 NOTION_JOB_DB_ID = os.getenv("NOTION_JOB_DB_ID")

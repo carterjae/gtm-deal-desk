@@ -26,9 +26,26 @@ os.chdir(PROJECT_ROOT)
 load_dotenv(PROJECT_ROOT / ".env")
 
 from schema import ClayInputData
-from job_engine import ClayJobInput, process_job_ingest
-from daemon_worker import poll_raw_inbox_once, start_background_poller_thread
-from scripts.spar_engine import SparSessionManager, list_active_targets, SUPPORTED_NEURAL_VOICES, generate_neural_audio_wav
+
+try:
+    from job_engine import ClayJobInput, process_job_ingest
+except ImportError:
+    ClayJobInput = None
+    process_job_ingest = None
+
+try:
+    from daemon_worker import poll_raw_inbox_once, start_background_poller_thread
+except ImportError:
+    poll_raw_inbox_once = None
+    start_background_poller_thread = None
+
+try:
+    from scripts.spar_engine import SparSessionManager, list_active_targets, SUPPORTED_NEURAL_VOICES, generate_neural_audio_wav
+except ImportError:
+    SparSessionManager = None
+    list_active_targets = None
+    SUPPORTED_NEURAL_VOICES = []
+    generate_neural_audio_wav = None
 import base64
 
 
