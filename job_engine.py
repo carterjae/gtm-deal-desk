@@ -1073,8 +1073,8 @@ def synthesize_job_opportunity(
             try:
                 print(f"[*] Synthesizing Job Deal Room for '{job.company_name} — {job.role_title}' via {model_name}...")
 
-                if cached_content_name:
-                    # 1. EXPLICIT CACHE PATH: Static career corpus is already cached in KV memory
+                if cached_content_name and model_name == "gemini-2.5-flash":
+                    # 1. EXPLICIT CACHE PATH: Static career corpus is cached in KV memory for gemini-2.5-flash
                     response = client.models.generate_content(
                         model=model_name,
                         contents=prompt,
@@ -1086,14 +1086,12 @@ def synthesize_job_opportunity(
                         ),
                     )
                 else:
-                    # 2. IMPLICIT PREFIX CACHE PATH: Static corpus prepended to prompt
-                    corpus_path = PROJECT_ROOT / "context" / "static_career_corpus.md"
-                    static_context = corpus_path.read_text(encoding="utf-8") if corpus_path.exists() else ""
-                    full_prompt = f"{static_context}\n\n---\n\n{prompt}" if static_context else prompt
-
+                    # 2. DIRECT SYSTEM-INSTRUCTION PATH (used for gemini-2.5-pro & fallback models):
+                    # system_instruction already embeds master_career_profile.json; avoid prepending the 236k-token
+                    # padded cache file which exceeds the 200k-token standard context tier on gemini-2.5-pro.
                     response = client.models.generate_content(
                         model=model_name,
-                        contents=full_prompt,
+                        contents=prompt,
                         config=types.GenerateContentConfig(
                             system_instruction=system_instruction,
                             temperature=0.2,

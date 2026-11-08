@@ -558,10 +558,16 @@ def resolve_hiring_committee_contact(
     """
     clean_co = re.sub(r"[^a-zA-Z0-9]", "", company_name.lower())
     default_dom = KNOWN_COMPANY_DOMAINS.get(clean_co, f"{clean_co}.com")
-    if domain and clean_domain(domain) == f"{clean_co}.com" and clean_co in KNOWN_COMPANY_DOMAINS:
-        target_dom = KNOWN_COMPANY_DOMAINS[clean_co]
+    aggregator_domains = {
+        "builtin.com", "join.com", "greenhouse.io", "ashbyhq.com",
+        "lever.co", "workable.com", "jobleads.com", "linkedin.com",
+        "indeed.com", "ziprecruiter.com", "glassdoor.com", "dynamitejobs.com",
+    }
+    cleaned_passed = clean_domain(domain) if domain else ""
+    if not cleaned_passed or any(agg in cleaned_passed for agg in aggregator_domains) or (cleaned_passed == f"{clean_co}.com" and clean_co in KNOWN_COMPANY_DOMAINS):
+        target_dom = default_dom
     else:
-        target_dom = clean_domain(domain or default_dom)
+        target_dom = cleaned_passed
 
     # 1. Check known verified executive directory first (curated headcount-tiered GTM/RevOps leaders)
     resolved_name = ""
