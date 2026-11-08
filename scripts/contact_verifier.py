@@ -432,6 +432,7 @@ KNOWN_EXECUTIVE_LEADERSHIP: Dict[str, Tuple[str, str]] = {
     "omnissa": ("Kevin Norlin", "SVP & Chief Revenue Officer"),
     "cloudflare": ("Christian Smith", "President of Revenue"),
     "gitlab": ("Chris Weber", "Chief Revenue Officer"),
+    "samsara": ("Andy McCall", "Chief Revenue Officer"),
 }
 
 
@@ -525,6 +526,24 @@ def resolve_named_decision_maker_via_gemini(
     return None
 
 
+KNOWN_COMPANY_DOMAINS: Dict[str, str] = {
+    "kernel": "onkernel.com",
+    "pylon": "usepylon.com",
+    "unify": "unifygtm.com",
+    "dust": "dust.tt",
+    "lovable": "lovable.dev",
+    "apollo": "apollo.io",
+    "apolloio": "apollo.io",
+    "protege": "withprotege.ai",
+    "fireworks": "fireworks.ai",
+    "fireworksai": "fireworks.ai",
+    "abacus": "abacus.ai",
+    "abacusai": "abacus.ai",
+    "clay": "clay.com",
+    "claylabs": "clay.com",
+}
+
+
 def resolve_hiring_committee_contact(
     company_name: str,
     role_archetype: str,
@@ -538,14 +557,22 @@ def resolve_hiring_committee_contact(
     Never fabricates hard-bounce role placeholder emails (e.g. head.revops@domain.com).
     """
     clean_co = re.sub(r"[^a-zA-Z0-9]", "", company_name.lower())
-    target_dom = clean_domain(domain or f"{clean_co}.com")
+    default_dom = KNOWN_COMPANY_DOMAINS.get(clean_co, f"{clean_co}.com")
+    if domain and clean_domain(domain) == f"{clean_co}.com" and clean_co in KNOWN_COMPANY_DOMAINS:
+        target_dom = KNOWN_COMPANY_DOMAINS[clean_co]
+    else:
+        target_dom = clean_domain(domain or default_dom)
 
-    # 1. Check if existing_buyer contains a real human name
+    # 1. Check known verified executive directory first (curated headcount-tiered GTM/RevOps leaders)
     resolved_name = ""
     resolved_title = ""
 
-    if existing_buyer and existing_buyer.strip():
-        raw_b = existing_buyer.strip()
+    if clean_co in KNOWN_EXECUTIVE_LEADERSHIP:
+        resolved_name, resolved_title = KNOWN_EXECUTIVE_LEADERSHIP[clean_co]
+
+    # 2. Otherwise check if existing_buyer contains a real human name
+    if not resolved_name and existing_buyer and existing_buyer.strip():
+        raw_b = re.sub(r"\(.*?\)", "", existing_buyer).strip()
         if "," in raw_b:
             parts = raw_b.split(",", 1)
             candidate_name = parts[0].strip()
@@ -555,10 +582,6 @@ def resolve_hiring_committee_contact(
         elif is_verified_human_name(raw_b):
             resolved_name = raw_b
             resolved_title = "GTM & Revenue Leadership"
-
-    # 2. Check known verified executive directory (Startup Founders / GTM Leaders only)
-    if not resolved_name and clean_co in KNOWN_EXECUTIVE_LEADERSHIP:
-        resolved_name, resolved_title = KNOWN_EXECUTIVE_LEADERSHIP[clean_co]
 
     # 3. Live Gemini + Google Search Grounding lookup for named GTM/RevOps leader
     if not is_verified_human_name(resolved_name):
